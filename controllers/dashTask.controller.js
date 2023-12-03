@@ -109,11 +109,6 @@ exports.barChart = async (req, res) => {
       const successFemale = getSuccessPercentage(femaleUserIdsCompleted, femaleUserIds, "Mujer")
       const successNoInformed = getSuccessPercentage(noInformedUserIdsCompleted, noInformedUserIds, "No Informado")
 
-      /*console.log("AQUI!!!")
-      console.log(successMale)
-      console.log(successfeMale)
-      console.log(successNoInformed)*/
-
       const chartData1 = [successMale, successFemale, successNoInformed];
 
       //BAR CHART Tiempo promedio por rango etario y sexo
@@ -133,12 +128,6 @@ exports.barChart = async (req, res) => {
       const avgTimeMale = await getAvgTimeByRange(maleUserTimes, "Hombre")
       const avgTimeFemale = await getAvgTimeByRange(femaleUserTimes, "Mujer")
       const avgTimeNoInformed = await getAvgTimeByRange(noInformedUserTimes, "No Informado")
-
-
-      console.log("AQUI!!!")
-      console.log(avgTimeMale)
-      console.log(avgTimeFemale)
-      console.log(avgTimeNoInformed)
 
       const chartData2 = [avgTimeMale, avgTimeFemale, avgTimeNoInformed];
 
