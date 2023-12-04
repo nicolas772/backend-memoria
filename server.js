@@ -7,7 +7,7 @@ const Role = db.role;
 const app = express();
 
 var corsOptions = {
-  origin: "https://backend-memoria.onrender.com:10000"
+  origin: "https://feelux.onrender.com"
 };
 
 app.use(cors(corsOptions));
