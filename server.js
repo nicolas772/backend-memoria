@@ -7,7 +7,7 @@ const Role = db.role;
 const app = express();
 
 var corsOptions = {
-  origin: "http://localhost:8081"
+  origin: "https://backend-memoria.onrender.com/"
 };
 
 app.use(cors(corsOptions));
