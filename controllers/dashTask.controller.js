@@ -94,42 +94,42 @@ exports.barChart = async (req, res) => {
          return res.status(404).json({ error: "Tarea No Encontrada." });
       }
 
-      //BAR CHART % exito por rango etario y sexo
+      //BAR CHART % exito por rango etario y nivel
       const allUserIds = allInfoTasks.map(task => task.userId);
       const completedTask = allInfoTasks.filter(task => task.complete === true);
       const completedTaskUserIds = completedTask.map(task => task.userId);
-      const maleUserIds = await getUserIdsBySexAndRange(allUserIds, "Masculino")
-      const femaleUserIds = await getUserIdsBySexAndRange(allUserIds, "Femenino")
-      const noInformedUserIds = await getUserIdsBySexAndRange(allUserIds, "No Informado")
-      const maleUserIdsCompleted = await getUserIdsBySexAndRange(completedTaskUserIds, "Masculino")
-      const femaleUserIdsCompleted = await getUserIdsBySexAndRange(completedTaskUserIds, "Femenino")
-      const noInformedUserIdsCompleted = await getUserIdsBySexAndRange(completedTaskUserIds, "No Informado")
+      const basicUserIds = await getUserIdsByLevelAndRange(allUserIds, "Básico")
+      const mediumUserIds = await getUserIdsByLevelAndRange(allUserIds, "Medio")
+      const advancedUserIds = await getUserIdsByLevelAndRange(allUserIds, "Avanzado")
+      const basicUserIdsCompleted = await getUserIdsByLevelAndRange(completedTaskUserIds, "Básico")
+      const mediumUserIdsCompleted = await getUserIdsByLevelAndRange(completedTaskUserIds, "Medio")
+      const advancedUserIdsCompleted = await getUserIdsByLevelAndRange(completedTaskUserIds, "Avanzado")
 
-      const successMale = getSuccessPercentage(maleUserIdsCompleted, maleUserIds, "Hombre")
-      const successFemale = getSuccessPercentage(femaleUserIdsCompleted, femaleUserIds, "Mujer")
-      const successNoInformed = getSuccessPercentage(noInformedUserIdsCompleted, noInformedUserIds, "No Informado")
+      const successBasic = getSuccessPercentage(basicUserIdsCompleted, basicUserIds, "Básico")
+      const successMedium = getSuccessPercentage(mediumUserIdsCompleted, mediumUserIds, "Medio")
+      const successAdvanced = getSuccessPercentage(advancedUserIdsCompleted, advancedUserIds, "Avanzado")
 
-      const chartData1 = [successMale, successFemale, successNoInformed];
+      const chartData1 = [successBasic, successMedium, successAdvanced];
 
-      //BAR CHART Tiempo promedio por rango etario y sexo
+      //BAR CHART Tiempo promedio por rango etario y nivel
 
       const allUserTimes = allInfoTasks.map(task => ({
          userId: task.userId,
          time: task.duration
       }));
-      const maleIds = await getIdsBySex(allUserIds, "Masculino")
-      const femaleIds = await getIdsBySex(allUserIds, "Femenino")
-      const noInformedIds = await getIdsBySex(allUserIds, "No Informado")
+      const basicIds = await getIdsByLevel(allUserIds, "Básico")
+      const mediumIds = await getIdsByLevel(allUserIds, "Medio")
+      const advancedIds = await getIdsByLevel(allUserIds, "Avanzado")
 
-      const maleUserTimes = allUserTimes.filter(userTime => maleIds.includes(userTime.userId));
-      const femaleUserTimes = allUserTimes.filter(userTime => femaleIds.includes(userTime.userId));
-      const noInformedUserTimes = allUserTimes.filter(userTime => noInformedIds.includes(userTime.userId));
+      const basicUserTimes = allUserTimes.filter(userTime => basicIds.includes(userTime.userId));
+      const mediumUserTimes = allUserTimes.filter(userTime => mediumIds.includes(userTime.userId));
+      const advancedUserTimes = allUserTimes.filter(userTime => advancedIds.includes(userTime.userId));
 
-      const avgTimeMale = await getAvgTimeByRange(maleUserTimes, "Hombre")
-      const avgTimeFemale = await getAvgTimeByRange(femaleUserTimes, "Mujer")
-      const avgTimeNoInformed = await getAvgTimeByRange(noInformedUserTimes, "No Informado")
+      const avgTimeBasic = await getAvgTimeByRange(basicUserTimes, "Básico")
+      const avgTimeMedium = await getAvgTimeByRange(mediumUserTimes, "Medio")
+      const avgTimeAdvanced = await getAvgTimeByRange(advancedUserTimes, "Avanzado")
 
-      const chartData2 = [avgTimeMale, avgTimeFemale, avgTimeNoInformed];
+      const chartData2 = [avgTimeBasic, avgTimeMedium, avgTimeAdvanced];
 
       const colors = ["emerald", "rose", "blue", "indigo", "yellow"];
       const categories = [rango1, rango2, rango3, rango4, rango5];
@@ -160,13 +160,13 @@ function minutesSecondsToMilliseconds(minutes, seconds) {
    return totalSeconds * 1000; // Convertir segundos a milisegundos
 }
 
-async function getUserIdsBySexAndRange(allUserIds, sex) {
+async function getUserIdsByLevelAndRange(allUserIds, level) {
    try {
       const users = await User.findAll({
-         attributes: ['id', 'birthday', 'sex'],
+         attributes: ['id', 'birthday', 'level'],
          where: {
             id: allUserIds,
-            sex: sex, // Considera el sexo solo si no es "ni"
+            level: level, 
          },
       });
 
@@ -199,30 +199,30 @@ async function getUserIdsBySexAndRange(allUserIds, sex) {
       return result;
    } catch (error) {
       console.error(error);
-      throw new Error('Error al obtener usuarios por sexo y rango etario');
+      throw new Error('Error al obtener usuarios por nivel y rango etario');
    }
 }
 
-async function getIdsBySex(allUserIds, sex) {
+async function getIdsByLevel(allUserIds, level) {
    try {
       const users = await User.findAll({
          where: {
             id: allUserIds,
-            sex: sex,
+            level: level,
          },
       });
       const userIds = users.map(user => user.id);
       return userIds;
    } catch (error) {
       console.error(error);
-      throw new Error('Error al obtener usuarios por sexo y rango etario');
+      throw new Error('Error al obtener usuarios por nivel y rango etario');
    }
 }
 
-function getSuccessPercentage(userIdsCompleted, userIdsTotal, sex) {
+function getSuccessPercentage(userIdsCompleted, userIdsTotal, level) {
    try {
       const result = {};
-      result.name = sex
+      result.name = level
       if (userIdsTotal[rango1].length > 0) {
          result[rango1] = calculatePercentage(userIdsCompleted[rango1], userIdsTotal[rango1]);
       }
@@ -260,7 +260,7 @@ function calculatePercentage(completedIds, totalIds) {
    return successPercentage;
 }
 
-async function getAvgTimeByRange(UserTimes, sex) {
+async function getAvgTimeByRange(UserTimes, level) {
    try {
       const users = await User.findAll({
          attributes: ['id', 'birthday'],
@@ -305,7 +305,7 @@ async function getAvgTimeByRange(UserTimes, sex) {
       );
       
       const avgTime = {}
-      avgTime.name = sex
+      avgTime.name = level
       
       if(result[rango1].length > 0){
          avgTime[rango1] = calculateAverage(result[rango1])

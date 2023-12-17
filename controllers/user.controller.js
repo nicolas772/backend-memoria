@@ -14,7 +14,7 @@ exports.updateProfile= (req, res) => {
   User.update({
     username: req.body.username,
     email: req.body.email,
-    sex: req.body.sex,
+    level: req.body.level,
     birthday: req.body.birthday
   },
     { where: { id: req.body.idUser } }

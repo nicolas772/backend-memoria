@@ -7,7 +7,8 @@ const Role = db.role;
 const app = express();
 
 var corsOptions = {
-  origin: "https://feelux.onrender.com"
+  origin: "https://feelux.onrender.com",
+  //origin: "http://localhost:8081"
 };
 
 app.use(cors(corsOptions));

@@ -27,5 +27,3 @@ module.exports = {
     idle: 10000
   }
 };
-
-"postgres://gzwdxdbe:CQcUdMCE41Cxwk_5fVotueMb9NMi6YZQ@isabelle.db.elephantsql.com/gzwdxdbe"

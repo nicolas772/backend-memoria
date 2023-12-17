@@ -204,15 +204,33 @@ exports.barChart = async (req, res) => {
          return res.status(404).json({ error: "Iteración No Encontrada." });
       }
 
-      const scores = allGeneralSentiment.map(opinion => opinion.score.toFixed(2));
+      /*const scores = allGeneralSentiment.map(opinion => opinion.score.toFixed(2));
+      const users = allGeneralSentiment.map(opinion => "Usuario ID " + opinion.userId)*/
 
-      const users = allGeneralSentiment.map(opinion => "Usuario ID " + opinion.userId)
+      const allUserIds = allGeneralSentiment.map(opinion => opinion.userId)
+      const basicIds = await getIdsByLevel(allUserIds, "Básico")
+      const mediumIds = await getIdsByLevel(allUserIds, "Medio")
+      const advancedIds = await getIdsByLevel(allUserIds, "Avanzado")
 
+      const arrBasicScores = allGeneralSentiment
+         .filter(opinion => basicIds.includes(opinion.userId))
+         .map(opinion => opinion.score.toFixed(2));
 
+      const arrMediumScores = allGeneralSentiment
+         .filter(opinion => mediumIds.includes(opinion.userId))
+         .map(opinion => opinion.score.toFixed(2));
+
+      const arrAdvancedScores = allGeneralSentiment
+         .filter(opinion => advancedIds.includes(opinion.userId))
+         .map(opinion => opinion.score.toFixed(2));
 
       const responseData = {
-         chartData: scores,
-         categories: users,
+         chartData: [
+            calcularPromedio(arrBasicScores),
+            calcularPromedio(arrMediumScores),
+            calcularPromedio(arrAdvancedScores),
+         ],
+         categories: ["Básico", "Medio", "Avanzado"],
       };
 
       res.status(200).json(responseData);
@@ -272,3 +290,29 @@ exports.cloudWord = async (req, res) => {
    }
 };
 
+async function getIdsByLevel(allUserIds, level) {
+   try {
+      const users = await User.findAll({
+         where: {
+            id: allUserIds,
+            level: level,
+         },
+      });
+      const userIds = users.map(user => user.id);
+      return userIds;
+   } catch (error) {
+      console.error(error);
+      throw new Error('Error al obtener usuarios por nivel');
+   }
+}
+
+function calcularPromedio(arr) {
+   if (arr.length === 0) {
+      return 0; // Manejar el caso de un array vacío para evitar dividir por cero
+   }
+
+   const suma = arr.reduce((total, elemento) => total + elemento, 0);
+   const promedio = suma / arr.length;
+
+   return promedio;
+}

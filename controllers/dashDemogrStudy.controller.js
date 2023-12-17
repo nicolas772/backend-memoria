@@ -8,7 +8,7 @@ const { Op } = require('sequelize'); // Necesitas importar Op desde sequelize
 const moment = require('moment');
 
 const rangos = ["Niños", "Adolescentes", "Jovenes", "Adultos", "Adulto Mayores"]
-const generos = ["Masculino", "Femenino", "No Informado"]
+const niveles = ["Básico", "Medio", "Avanzado"]
 const color_map_rangos = {
    [rangos[0]]: '#28a745',
    [rangos[1]]: '#ffc107',
@@ -51,33 +51,30 @@ exports.cards = async (req, res) => {
          allUsersIdsStudy.push(...allUserIds);
       }
 
-      const maleIds = await getIdsBySex(allUsersIdsStudy, "Masculino")
-      const femaleIds = await getIdsBySex(allUsersIdsStudy, "Femenino")
-      const noInformedIds = await getIdsBySex(allUsersIdsStudy, "No Informado")
-      const users_qty_complete = maleIds.length + femaleIds.length + noInformedIds.length
-
-      console.log("AQUI!!!")
-      console.log(allUsersIdsStudy)
+      const basicIds = await getIdsByLevel(allUsersIdsStudy, niveles[0])
+      const mediumIds = await getIdsByLevel(allUsersIdsStudy, niveles[1])
+      const advancedIds = await getIdsByLevel(allUsersIdsStudy, niveles[2])
+      const users_qty_complete = basicIds.length + mediumIds.length + advancedIds.length
 
       const cantUsuarios = {
          title: "Cantidad Usuarios",
          metric: users_qty_complete,
-         columnName1: "Género",
+         columnName1: "Conocimiento Tecnológico",
          columnName2: "Usuarios",
          data: [
             {
-               name: "Masculino",
-               stat: maleIds.length,
+               name: niveles[0],
+               stat: basicIds.length,
                icon: "hombre",
             },
             {
-               name: "Femenino",
-               stat: femaleIds.length,
+               name: niveles[1],
+               stat: mediumIds.length,
                icon: "mujer",
             },
             {
-               name: "No Informado",
-               stat: noInformedIds.length,
+               name: niveles[2],
+               stat: advancedIds.length,
                icon: "noIdentificado"
             },
          ]
@@ -131,7 +128,7 @@ exports.pieChart = async (req, res) => {
          allUsersIdsStudy.push(...allUserIds);
       }
 
-      const allUsersByRange = await getUserIdsBySexAndRange(allUsersIdsStudy, "todos")
+      const allUsersByRange = await getUserIdsByLevelAndRange(allUsersIdsStudy, "todos")
       const series = [
          allUsersByRange[rangos[0]].length,
          allUsersByRange[rangos[1]].length,
@@ -182,17 +179,17 @@ exports.barChart = async (req, res) => {
          allUsersIdsStudy.push(...allUserIds);
       }
 
-      const maleUsersByRange = await getUserIdsBySexAndRange(allUsersIdsStudy, "Masculino")
-      const femaleUsersByRange = await getUserIdsBySexAndRange(allUsersIdsStudy, "Femenino")
-      const noIdentificadoUsersByRange = await getUserIdsBySexAndRange(allUsersIdsStudy, "No Informado")
+      const basicUsersByRange = await getUserIdsByLevelAndRange(allUsersIdsStudy, niveles[0])
+      const mediumUsersByRange = await getUserIdsByLevelAndRange(allUsersIdsStudy, niveles[1])
+      const advancedUsersByRange = await getUserIdsByLevelAndRange(allUsersIdsStudy, niveles[2])
 
-      const maleUsersByRangeQty = getUsersQtyByRange(maleUsersByRange)
-      const femaleUsersByRangeQty = getUsersQtyByRange(femaleUsersByRange)
-      const noIdentificadoUsersByRangeQty = getUsersQtyByRange(noIdentificadoUsersByRange)
+      const basicUsersByRangeQty = getUsersQtyByRange(basicUsersByRange)
+      const mediumUsersByRangeQty = getUsersQtyByRange(mediumUsersByRange)
+      const advancedUsersByRangeQty = getUsersQtyByRange(advancedUsersByRange)
       const chartData = [
-         maleUsersByRangeQty,
-         femaleUsersByRangeQty,
-         noIdentificadoUsersByRangeQty,
+         basicUsersByRangeQty,
+         mediumUsersByRangeQty,
+         advancedUsersByRangeQty,
       ]
       const colors = ["green", "yellow", "purple", "blue", "orange"];
 
@@ -237,20 +234,20 @@ exports.stackedChart = async (req, res) => {
                return iterationState.userId
             }
          });
-         const maleUsersByRange = await getUserIdsBySexAndRange(allUserIds, "Masculino")
-         const femaleUsersByRange = await getUserIdsBySexAndRange(allUserIds, "Femenino")
-         const noIdentificadoUsersByRange = await getUserIdsBySexAndRange(allUserIds, "No Informado")
+         const basicUsersByRange = await getUserIdsByLevelAndRange(allUserIds, niveles[0])
+         const mediumUsersByRange = await getUserIdsByLevelAndRange(allUserIds, niveles[1])
+         const advancedUsersByRange = await getUserIdsByLevelAndRange(allUserIds, niveles[2])
 
-         const maleUsersByRangeQty = getUsersQtyByRange(maleUsersByRange)
-         const femaleUsersByRangeQty = getUsersQtyByRange(femaleUsersByRange)
-         const noIdentificadoUsersByRangeQty = getUsersQtyByRange(noIdentificadoUsersByRange)
+         const basicUsersByRangeQty = getUsersQtyByRange(basicUsersByRange)
+         const mediumUsersByRangeQty = getUsersQtyByRange(mediumUsersByRange)
+         const advancedUsersByRangeQty = getUsersQtyByRange(advancedUsersByRange)
 
          allUsersIdsByIteration.push({
             idIteration: idIteration,
             iteration: `Iteración ${iterationNumber}`,
-            [generos[0]]: maleUsersByRangeQty,
-            [generos[1]]: femaleUsersByRangeQty,
-            [generos[2]]: noIdentificadoUsersByRangeQty
+            [niveles[0]]: basicUsersByRangeQty,
+            [niveles[1]]: mediumUsersByRangeQty,
+            [niveles[2]]: advancedUsersByRangeQty
          });
          categories_2.push(`Iteración ${iterationNumber}`)
       }
@@ -259,7 +256,7 @@ exports.stackedChart = async (req, res) => {
       const colors_2 = []
       //construccion de series
       for (const rango of rangos) {
-         for (const genero of generos) {
+         for (const genero of niveles) {
             const name = genero + " " + rango
             const data = []
             for (const iter of allUsersIdsByIteration) {
@@ -295,38 +292,38 @@ exports.stackedChart = async (req, res) => {
    }
 };
 
-async function getIdsBySex(allUserIds, sex) {
+async function getIdsByLevel(allUserIds, level) {
    try {
       const users = await User.findAll({
          where: {
             id: allUserIds,
-            sex: sex,
+            level: level,
          },
       });
       const userIds = users.map(user => user.id);
       return userIds;
    } catch (error) {
       console.error(error);
-      throw new Error('Error al obtener usuarios por sexo y rango etario');
+      throw new Error('Error al obtener usuarios por nivel y rango etario');
    }
 }
 
-async function getUserIdsBySexAndRange(allUserIds, sexo) {
+async function getUserIdsByLevelAndRange(allUserIds, level) {
    try {
       let users
-      if (sexo === "todos") {
+      if (level === "todos") {
          users = await User.findAll({
-            attributes: ['id', 'birthday', 'sex'],
+            attributes: ['id', 'birthday', 'level'],
             where: {
                id: allUserIds,
             },
          });
       } else {
          users = await User.findAll({
-            attributes: ['id', 'birthday', 'sex'],
+            attributes: ['id', 'birthday', 'level'],
             where: {
                id: allUserIds,
-               sex: sexo,
+               level: level,
             },
          });
       }
@@ -338,7 +335,7 @@ async function getUserIdsBySexAndRange(allUserIds, sexo) {
          [rangos[3]]: [],
          [rangos[4]]: [],
       };
-      result.name = sexo
+      result.name = level
       const currentDate = moment();
 
       users.forEach((user) => {
@@ -360,7 +357,7 @@ async function getUserIdsBySexAndRange(allUserIds, sexo) {
       return result;
    } catch (error) {
       console.error(error);
-      throw new Error('Error al obtener usuarios por sexo y rango etario');
+      throw new Error('Error al obtener usuarios por nivel y rango etario');
    }
 }
 

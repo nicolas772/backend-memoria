@@ -14,7 +14,7 @@ exports.signup = (req, res) => {
     username: req.body.username,
     email: req.body.email,
     password: bcrypt.hashSync(req.body.password, 8),
-    sex: req.body.sex,
+    level: req.body.level,
     birthday: req.body.birthday
   })
     .then(user => {
@@ -78,7 +78,7 @@ exports.signin = (req, res) => {
           id: user.id,
           username: user.username,
           email: user.email,
-          sex: user.sex,
+          level: user.level,
           birthday: user.birthday,
           roles: authorities,
           accessToken: token

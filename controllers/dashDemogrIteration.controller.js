@@ -35,29 +35,29 @@ exports.cards = async (req, res) => {
             return iterationState.userId
          }
       });
-      const maleIds = await getIdsBySex(allUserIds, "Masculino")
-      const femaleIds = await getIdsBySex(allUserIds, "Femenino")
-      const noInformedIds = await getIdsBySex(allUserIds, "No Informado")
+      const basicIds = await getIdsByLevel(allUserIds, "Básico")
+      const mediumIds = await getIdsByLevel(allUserIds, "Medio")
+      const advancedIds = await getIdsByLevel(allUserIds, "Avanzado")
 
       const cantUsuarios = {
          title: "Cantidad Usuarios",
          metric: users_qty_complete,
-         columnName1: "Género",
+         columnName1: "Conocimiento Tecnológico",
          columnName2: "Usuarios",
          data: [
             {
-               name: "Masculino",
-               stat: maleIds.length,
+               name: "Básico",
+               stat: basicIds.length,
                icon: "hombre",
             },
             {
-               name: "Femenino",
-               stat: femaleIds.length,
+               name: "Medio",
+               stat: mediumIds.length,
                icon: "mujer",
             },
             {
-               name: "No Informado",
-               stat: noInformedIds.length,
+               name: "Avanzado",
+               stat: advancedIds.length,
                icon: "noIdentificado"
             },
          ]
@@ -99,7 +99,7 @@ exports.pieChart = async (req, res) => {
          }
       });
 
-      const allUsersByRange = await getUserIdsBySexAndRange(allUserIds, "todos")
+      const allUsersByRange = await getUserIdsByLevelAndRange(allUserIds, "todos")
       const series = [
          allUsersByRange[rangos[0]].length,
          allUsersByRange[rangos[1]].length,
@@ -146,17 +146,17 @@ exports.barChart = async (req, res) => {
          }
       });
 
-      const maleUsersByRange = await getUserIdsBySexAndRange(allUserIds, "Masculino")
-      const femaleUsersByRange = await getUserIdsBySexAndRange(allUserIds, "Femenino")
-      const noIdentificadoUsersByRange = await getUserIdsBySexAndRange(allUserIds, "No Informado")
+      const basicUsersByRange = await getUserIdsByLevelAndRange(allUserIds, "Básico")
+      const mediumUsersByRange = await getUserIdsByLevelAndRange(allUserIds, "Medio")
+      const advancedUsersByRange = await getUserIdsByLevelAndRange(allUserIds, "Avanzado")
 
-      const maleUsersByRangeQty = getUsersQtyByRange(maleUsersByRange)
-      const femaleUsersByRangeQty = getUsersQtyByRange(femaleUsersByRange)
-      const noIdentificadoUsersByRangeQty = getUsersQtyByRange(noIdentificadoUsersByRange)
+      const basicUsersByRangeQty = getUsersQtyByRange(basicUsersByRange)
+      const mediumUsersByRangeQty = getUsersQtyByRange(mediumUsersByRange)
+      const advancedUsersByRangeQty = getUsersQtyByRange(advancedUsersByRange)
       const chartData = [
-         maleUsersByRangeQty,
-         femaleUsersByRangeQty,
-         noIdentificadoUsersByRangeQty,
+         basicUsersByRangeQty,
+         mediumUsersByRangeQty,
+         advancedUsersByRangeQty,
       ]
       const colors = ["green", "yellow", "purple", "blue", "orange"];
 
@@ -172,38 +172,38 @@ exports.barChart = async (req, res) => {
    }
 };
 
-async function getIdsBySex(allUserIds, sex) {
+async function getIdsByLevel(allUserIds, level) {
    try {
       const users = await User.findAll({
          where: {
             id: allUserIds,
-            sex: sex,
+            level: level,
          },
       });
       const userIds = users.map(user => user.id);
       return userIds;
    } catch (error) {
       console.error(error);
-      throw new Error('Error al obtener usuarios por sexo y rango etario');
+      throw new Error('Error al obtener usuarios por nivel y rango etario');
    }
 }
 
-async function getUserIdsBySexAndRange(allUserIds, sexo) {
+async function getUserIdsByLevelAndRange(allUserIds, level) {
    try {
       let users
-      if (sexo === "todos") {
+      if (level === "todos") {
          users = await User.findAll({
-            attributes: ['id', 'birthday', 'sex'],
+            attributes: ['id', 'birthday', 'level'],
             where: {
                id: allUserIds,
             },
          });
       } else {
          users = await User.findAll({
-            attributes: ['id', 'birthday', 'sex'],
+            attributes: ['id', 'birthday', 'level'],
             where: {
                id: allUserIds,
-               sex: sexo,
+               level: level,
             },
          });
       }
@@ -215,7 +215,7 @@ async function getUserIdsBySexAndRange(allUserIds, sexo) {
          [rangos[3]]: [],
          [rangos[4]]: [],
       };
-      result.name = sexo
+      result.name = level
       const currentDate = moment();
 
       users.forEach((user) => {
@@ -237,7 +237,7 @@ async function getUserIdsBySexAndRange(allUserIds, sexo) {
       return result;
    } catch (error) {
       console.error(error);
-      throw new Error('Error al obtener usuarios por sexo y rango etario');
+      throw new Error('Error al obtener usuarios por nivel y rango etario');
    }
 }
 
