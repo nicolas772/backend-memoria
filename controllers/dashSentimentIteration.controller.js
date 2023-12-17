@@ -214,21 +214,26 @@ exports.barChart = async (req, res) => {
 
       const arrBasicScores = allGeneralSentiment
          .filter(opinion => basicIds.includes(opinion.userId))
-         .map(opinion => opinion.score.toFixed(2));
+         .map(opinion => opinion.score);
 
       const arrMediumScores = allGeneralSentiment
          .filter(opinion => mediumIds.includes(opinion.userId))
-         .map(opinion => opinion.score.toFixed(2));
+         .map(opinion => opinion.score);
 
       const arrAdvancedScores = allGeneralSentiment
          .filter(opinion => advancedIds.includes(opinion.userId))
-         .map(opinion => opinion.score.toFixed(2));
+         .map(opinion => opinion.score);
+      
+
+      const avgBasicScores = calcularPromedio(arrBasicScores)
+      const avgMediumScores = calcularPromedio(arrMediumScores)
+      const avgAdvancedScores = calcularPromedio(arrAdvancedScores)
 
       const responseData = {
          chartData: [
-            calcularPromedio(arrBasicScores),
-            calcularPromedio(arrMediumScores),
-            calcularPromedio(arrAdvancedScores),
+            avgBasicScores,
+            avgMediumScores,
+            avgAdvancedScores,
          ],
          categories: ["Básico", "Medio", "Avanzado"],
       };
@@ -314,5 +319,5 @@ function calcularPromedio(arr) {
    const suma = arr.reduce((total, elemento) => total + elemento, 0);
    const promedio = suma / arr.length;
 
-   return promedio;
+   return promedio.toFixed(2);
 }
