@@ -43,7 +43,7 @@ exports.cards = async (req, res) => {
          title: "Tiempo Promedio de Iteración",
          metric: formatTime(avgIteration),
          columnName1: "Dificultad Tarea",
-         columnName2: "Tiempo",
+         columnName2: "Tiempo Promedio",
          data: [
             {
                name: "Fácil",
