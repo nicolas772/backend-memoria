@@ -32,14 +32,16 @@ exports.cards = async (req, res) => {
       const hardTask = allTasks.filter(task => task.dificulty === "Difícil");
       const hardTaskIds = hardTask.map(task => task.id);
 
-      const avgTask = await calculateAvgDuration(allTaskIds);
+      //const avgTask = await calculateAvgDuration(allTaskIds);
       const avgEasyTask = await calculateAvgDuration(easyTaskIds);
       const avgMediumTask = await calculateAvgDuration(mediumTaskIds);
       const avgHardTask = await calculateAvgDuration(hardTaskIds);
 
+      const avgIteration = await calculateAvgIteration(idIteration)
+
       const avgTime = {
          title: "Tiempo Promedio de Iteración",
-         metric: formatTime(avgTask),
+         metric: formatTime(avgIteration),
          columnName1: "Dificultad Tarea",
          columnName2: "Tiempo",
          data: [
@@ -360,6 +362,31 @@ async function calculateAvgDuration(taskIds) {
    const avgDuration = totalDuration / allInfoTasks.length;
    const roundedAverageDuration = Math.round(avgDuration / 1000) * 1000;
    return roundedAverageDuration
+}
+
+// Función para calcular el tiempo promedio de duración de la iteracion
+async function calculateAvgIteration(iterationId) {
+   const userSet = new Set();
+   // Obtener las InfoTasks correspondientes a los ids de las tareas
+   const tasks = await InfoTask.findAll({
+      where: {
+         iterationId: iterationId
+      },
+   });
+
+   if (tasks.length === 0) {
+      return 0;
+   }
+
+   // Calcula la cantidad de usuarios únicos que realizaron tareas
+   tasks.forEach(task => userSet.add(task.userId));
+   const usersQty_iteration = userSet.size
+   // Calcula el tiempo promedio de las tareas
+   const averageDuration = tasks.reduce((total, task) => total + task.duration, 0) / usersQty_iteration;
+   // Aproxima a la unidad de mil más cercana
+   const roundedAverageDuration = Math.round(averageDuration / 1000) * 1000;
+   return roundedAverageDuration
+   
 }
 
 // Función para calcular el procentaje completado de tareas
