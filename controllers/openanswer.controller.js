@@ -73,26 +73,27 @@ exports.create = async (req, res) => {
     const language = "es"
     const sentimentResponse = await sentimentAnalisisIA(language, opinion_normalizada)
     const sentimentIA = sentimentResponse.data.microsoft.items[0]
-    const sentiment = sentimentIA.sentiment
+    const sentiment_vote = sentimentIA.sentiment
     let sentiment_rate = sentimentIA.sentiment_rate
 
-    if (sentiment === "Negative") {
+    if (sentiment_vote === "Negative") {
       sentiment_rate = sentiment_rate * -1
     }
 
     let falsePositiveIA = false
-    if (sentiment_user === "positive" && sentiment === "negative") {
+    if (sentiment_user === "positive" && sentiment_vote === "Negative") {
       falsePositiveIA = true
     }
-    if (sentiment_user === "negative" && sentiment === "positive") {
+    if (sentiment_user === "negative" && sentiment_vote === "Positive") {
       falsePositiveIA = true
     }
+    
     await InterfazSentiment.create({
       userId: req.body.idUser,
       iterationId: req.body.idIteration,
       answer: opinion,
       comparative: sentiment_rate,
-      vote: sentiment,
+      vote: sentiment_vote,
       usersentiment: sentiment_user,
       falsepositive: falsePositiveIA,
     });
