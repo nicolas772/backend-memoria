@@ -18,6 +18,12 @@ module.exports = (sequelize, Sequelize) => {
     vote: {
       type: Sequelize.STRING
     },
+    usersentiment: {
+      type: Sequelize.STRING
+    },
+    falsepositive: {
+      type: Sequelize.BOOLEAN,
+    },
   });
 
   return InterfazSentiment;

@@ -7,6 +7,8 @@ const InterfazSentiment = db.interfazsentiment;
 const IterationState = db.iterationstate;
 const Iteration = db.iteration
 const Keyword = db.keyword
+const axios = require("axios").default;
+const apiKey = process.env.API_KEY
 
 async function analizarSentimiento(texto) {
   const sentiment = new SentimentManager();
@@ -29,27 +31,26 @@ exports.create = async (req, res) => {
         remove_duplicates: false
 
       });
-    
+
     let falsePositive = false
-    if (sentiment_user === "positive" && analisis.vote === "negative"){
+    if (sentiment_user === "positive" && analisis.vote === "Negative") {
       falsePositive = true
     }
-    if (sentiment_user === "negative" && analisis.vote === "positive"){
+    if (sentiment_user === "negative" && analisis.vote === "Positive") {
       falsePositive = true
     }
 
     const keywords_no_neutral = []
-    if (!falsePositive){
-      for (const keyword of keywords) {
-        const analisis_key = await analizarSentimiento(keyword);
-        if (analisis_key.vote != "neutral") {
-          keywords_no_neutral.push(keyword)
-          await Keyword.create({
-            userId: req.body.idUser,
-            iterationId: req.body.idIteration,
-            keyword: keyword,
-          });
-        }
+
+    for (const keyword of keywords) {
+      const analisis_key = await analizarSentimiento(keyword);
+      if (analisis_key.vote != "neutral") {
+        keywords_no_neutral.push(keyword)
+        await Keyword.create({
+          userId: req.body.idUser,
+          iterationId: req.body.idIteration,
+          keyword: keyword,
+        });
       }
     }
 
@@ -64,6 +65,36 @@ exports.create = async (req, res) => {
       vote: analisis.vote,
       usersentiment: sentiment_user,
       falsepositive: falsePositive,
+    });
+
+    //analisis con EDEN AI
+    //const languageResponse = await languageDetection(opinion_normalizada)
+    //const language = languageResponse.data.google.items[0].language
+    const language = "es"
+    const sentimentResponse = await sentimentAnalisisIA(language, opinion_normalizada)
+    const sentimentIA = sentimentResponse.data.microsoft.items[0]
+    const sentiment = sentimentIA.sentiment
+    let sentiment_rate = sentimentIA.sentiment_rate
+
+    if (sentiment === "Negative") {
+      sentiment_rate = sentiment_rate * -1
+    }
+
+    let falsePositiveIA = false
+    if (sentiment_user === "positive" && sentiment === "negative") {
+      falsePositiveIA = true
+    }
+    if (sentiment_user === "negative" && sentiment === "positive") {
+      falsePositiveIA = true
+    }
+    await InterfazSentiment.create({
+      userId: req.body.idUser,
+      iterationId: req.body.idIteration,
+      answer: opinion,
+      comparative: sentiment_rate,
+      vote: sentiment,
+      usersentiment: sentiment_user,
+      falsepositive: falsePositiveIA,
     });
 
     const iterationState = await IterationState.findOne({
@@ -92,6 +123,8 @@ exports.create = async (req, res) => {
   }
 };
 
+
+
 exports.prueba = async (req, res) => {
   try {
     const opinion = req.body.opinion;
@@ -99,117 +132,90 @@ exports.prueba = async (req, res) => {
     //Pre Procesamiento datos
     const normalizer = new NormalizerEs();
     const opinion_normalizada = normalizer.normalize(opinion);
-    const analisis_sentimiento = await analizarSentimiento(opinion_normalizada)
+    //const analisis_sentimiento = await analizarSentimiento(opinion_normalizada) //con node nlp
 
-    const keywords =
-      keyword_extractor.extract(opinion, {
-        language: "spanish",
-        remove_digits: true,
-        return_changed_case: true,
-        remove_duplicates: false
 
-      });
+    //analisis de sentimiento con eden ia
+    //const languageResponse = await languageDetection(opinion_normalizada)
+    //const language = languageResponse.data.google.items[0].language
+    const language = "es"
+    const sentimentResponse = await sentimentAnalisisIA(language, opinion_normalizada)
+    const sentimentIA = sentimentResponse.data.microsoft.items[0]
+    const sentiment = sentimentIA.sentiment
+    let sentiment_rate = sentimentIA.sentiment_rate
+    if (sentiment === "Negative") {
+      sentiment_rate = sentiment_rate * -1
+    }
+    const userID = 18
+    const iterationID = 3
+    const sentiment_user = "positive"
 
-    const keywords_no_neutral = []
-    for (const keyword of keywords) {
-      const analisis_key = await analizarSentimiento(keyword);
-      if (analisis_key.vote != "neutral") {
-        keywords_no_neutral.push(keyword)
-      }
+    let falsePositive = false
+    if (sentiment_user === "positive" && sentiment === "Negative") {
+      falsePositive = true
+    }
+    if (sentiment_user === "negative" && sentiment === "Positive") {
+      falsePositive = true
     }
 
+    await InterfazSentiment.create({
+      userId: userID,
+      iterationId: iterationID,
+      answer: opinion,
+      comparative: sentiment_rate,
+      vote: sentiment,
+      usersentiment: sentiment_user,
+      falsepositive: falsePositive,
+    });
+
     const responseData = {
-      análisis_1: analisis_sentimiento,
+      sentiment: sentiment,
+      sentiment_rate: sentiment_rate,
+      falsePositive: falsePositive
     };
 
     res.status(200).json(responseData);
   } catch (error) {
-    res.status(500).send('Error en el análisis de sentimiento'); // Enviar un mensaje de error en caso de excepción
+    res.status(500).send(error); // Enviar un mensaje de error en caso de excepción
   }
 };
 
-/*
-exports.create = async (req, res) => {
-  try {
-    const opinion1 = req.body.opinion1;
-    const opinion2 = req.body.opinion2;
-    const prefieroNoOpinar1 = req.body.prefieroNoOpinar1;
-    const prefieroNoOpinar2 = req.body.prefieroNoOpinar2;
-    let responseText
-    if (prefieroNoOpinar1 && prefieroNoOpinar2) {
-      responseText = 'no se opina sobre interfaz ni general'; // Enviar el resultado del análisis como respuesta en formato JSON
-    } else {
-      let analisis1, analisis2
-      responseText = 'Analisis de sentimiento realizado exitosamente'
-      if (prefieroNoOpinar1) {
-        analisis2 = await analizarSentimiento(opinion2);
-        await GeneralSentiment.create({
-          userId: req.body.idUser,
-          iterationId: req.body.idIteration,
-          answer: opinion2,
-          comparative: analisis2.comparative,
-          numhits: analisis2.numHits,
-          numwords: analisis2.numWords,
-          score: analisis2.score,
-          vote: analisis2.vote
-        });
-      } else if (prefieroNoOpinar2) {
-        analisis1 = await analizarSentimiento(opinion1);
-        await InterfazSentiment.create({
-          userId: req.body.idUser,
-          iterationId: req.body.idIteration,
-          answer: opinion1,
-          comparative: analisis1.comparative,
-          numhits: analisis1.numHits,
-          numwords: analisis1.numWords,
-          score: analisis1.score,
-          vote: analisis1.vote
-        });
-      } else {
-        analisis1 = await analizarSentimiento(opinion1);
-        analisis2 = await analizarSentimiento(opinion2);
-        await InterfazSentiment.create({
-          userId: req.body.idUser,
-          iterationId: req.body.idIteration,
-          answer: opinion1,
-          comparative: analisis1.comparative,
-          numhits: analisis1.numHits,
-          numwords: analisis1.numWords,
-          score: analisis1.score,
-          vote: analisis1.vote
-        });
-        await GeneralSentiment.create({
-          userId: req.body.idUser,
-          iterationId: req.body.idIteration,
-          answer: opinion2,
-          comparative: analisis2.comparative,
-          numhits: analisis2.numHits,
-          numwords: analisis2.numWords,
-          score: analisis2.score,
-          vote: analisis2.vote
-        });
-      }
-    }
-    const iterationState = await IterationState.findOne({
-      where: { iterationId: req.body.idIteration, userId: req.body.idUser }
-    });
-    iterationState.inTask = false
-    iterationState.inCSUQ = false
-    iterationState.inQuestion = false
-    await iterationState.save()
-    //lo que sigue, es para disminuir en 1 la cantidad de usuarios activos completando la iteracion
-    //y aumentar en 1 la cantidad de usuarios que completaron la iteracion
-    const iteration = await Iteration.findByPk(req.body.idIteration)
-    iteration.users_qty -= 1
-    iteration.users_qty_complete += 1
-    await iteration.save()
+const languageDetection = (opinion) => {
+  const options = {
+    method: "POST",
+    url: "https://api.edenai.run/v2/translation/language_detection",
+    headers: {
+      authorization: "Bearer " + apiKey,
+    },
+    data: {
+      providers: "google",
+      text: opinion,
+      fallback_providers: "",
+    },
+  };
 
-    res.status(200).send(responseText); // Enviar el resultado del análisis como respuesta en formato JSON 
-  } catch (error) {
-    res.status(500).send('Error en el análisis de sentimiento'); // Enviar un mensaje de error en caso de excepción
-  }
-};
-*/
+  return axios.request(options)
+}
+
+const sentimentAnalisisIA = (language, opinion) => {
+  const options = {
+    method: "POST",
+    url: "https://api.edenai.run/v2/text/sentiment_analysis",
+    headers: {
+      authorization: "Bearer " + apiKey,
+    },
+    data: {
+      providers: "microsoft",
+      text: opinion,
+      language: language,
+      fallback_providers: "",
+    },
+  };
+
+  return axios.request(options)
+}
+
+//PRUEBAS
 
 /*
 (nlp, natural) (natural solo tokenizado y normalizado)

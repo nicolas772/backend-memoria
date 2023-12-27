@@ -25,7 +25,7 @@ app.get("/", (req, res) => {
 });
 
 //synchronizing the database and forcing it to false so we dont lose data
-db.sequelize.sync({force: false}).then(() => {
+db.sequelize.sync({ alter: false }).then(() => {
     console.log('Drop and Resync Db');
     //initial();
 });
