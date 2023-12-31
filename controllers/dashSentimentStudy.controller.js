@@ -5,6 +5,7 @@ const Task = db.task;
 const InfoTask = db.infotask
 const IterationState = db.iterationstate
 const GeneralSentiment = db.generalsentiment
+const InterfazSentiment = db.interfazsentiment
 const Keyword = db.keyword
 const { Op } = require('sequelize'); // Necesitas importar Op desde sequelize
 
@@ -38,6 +39,9 @@ exports.cards = async (req, res) => {
       const arrWordsPromedio = []
       const arrHitsPromedio = []
 
+      const arrConfidentIA = []
+      const arrScorePromedioIA = []
+
       for (const iteration of allIterations) {
          const idIteration = iteration.id
          const allGeneralSentiment = await GeneralSentiment.findAll({
@@ -53,7 +57,20 @@ exports.cards = async (req, res) => {
             }
          })
 
-         if (!allGeneralSentiment || !allGeneralSentiment_with_falses) {
+         const allGeneralSentimentIA = await InterfazSentiment.findAll({
+            where: {
+               iterationId: idIteration,
+               falsepositive: false
+            }
+         })
+
+         const allGeneralSentiment_with_falses_IA = await InterfazSentiment.findAll({
+            where: {
+               iterationId: idIteration,
+            }
+         })
+
+         if (!allGeneralSentiment || !allGeneralSentiment_with_falses || !allGeneralSentimentIA || !allGeneralSentiment_with_falses_IA) {
             return res.status(404).json({ error: "Iteración No Encontrada." });
          }
 
@@ -65,6 +82,13 @@ exports.cards = async (req, res) => {
             confident = (allSentimentQty / allSentimentWithFalsesQty) * 100
             arrConfident.push(confident)
          }
+         const allSentimentQtyIA = allGeneralSentimentIA.length
+         const allSentimentWithFalsesQtyIA = allGeneralSentiment_with_falses_IA.length
+         let confidentIA = 1
+         if (allSentimentWithFalsesQtyIA > 0) {
+            confidentIA = (allSentimentQtyIA / allSentimentWithFalsesQtyIA) * 100
+            arrConfidentIA.push(confidentIA)
+         }
          let sum_score = 0
          let sum_words = 0
          let sum_hits = 0
@@ -72,7 +96,7 @@ exports.cards = async (req, res) => {
          let avg_words = 0
          let avg_hits = 0
          for (const sentiment of allGeneralSentiment) {
-            sum_score += sentiment.score
+            sum_score += sentiment.comparative
             sum_words += sentiment.numwords
             sum_hits += sentiment.numhits
          }
@@ -84,14 +108,28 @@ exports.cards = async (req, res) => {
             arrWordsPromedio.push(avg_words)
             arrHitsPromedio.push(avg_hits)
          }
+
+         let sum_scoreIA = 0
+         let avg_scoreIA = 0
+
+         for (const sentiment of allGeneralSentimentIA) {
+            sum_scoreIA += sentiment.comparative
+         }
+         if (allSentimentQtyIA > 0) {
+            avg_scoreIA = sum_scoreIA / allSentimentQtyIA
+            arrScorePromedioIA.push(avg_scoreIA)
+         }
       }
 
       const avgConfidentAll = calcularPromedio(arrConfident)
       const avgScoreAll = calcularPromedio(arrScorePromedio)
       const avgWordsAll = calcularPromedio(arrWordsPromedio)
       const avgHitsAll = calcularPromedio(arrHitsPromedio)
+      const avgConfidentAllIA = calcularPromedio(arrConfidentIA)
+      const avgScoreAllIA = calcularPromedio(arrScorePromedioIA)
 
       let sentiment_all = avgScoreAll > 0 ? "Positivo" : avgScoreAll < 0 ? "Negativo" : "Neutro";
+      let sentiment_all_IA = avgScoreAllIA > 0 ? "Positivo" : avgScoreAllIA < 0 ? "Negativo" : "Neutro";
 
       const generalSentiment = {
          title: "Sentimiento General Usuarios",
@@ -122,9 +160,40 @@ exports.cards = async (req, res) => {
          ]
       };
 
+      const generalSentimentIA = {
+         title: "Sentimiento General Usuarios",
+         metric: `${sentiment_all_IA} ${emojiMapSentiment[sentiment_all_IA]}`,
+         columnName1: "Métrica",
+         columnName2: "Valor",
+         data: [
+            {
+               name: "Score Promedio",
+               stat: avgScoreAllIA.toFixed(2),
+               icon: "score",
+            },
+            {
+               name: "Confianza",
+               stat: avgConfidentAllIA.toFixed(0) + "%",
+               icon: "activa",
+            },
+            {
+               name: "Promedio Palabras por opinión",
+               stat: avgWordsAll.toFixed(2),
+               icon: "palabras",
+            },
+            {
+               name: "Promedio Hits por opinión",
+               stat: avgHitsAll.toFixed(2),
+               icon: "hits"
+            },
+         ]
+      };
+
       const responseData = {
-         sentimiento_general: generalSentiment,
-         color: colorMapSentiment[sentiment_all]
+         sentimiento_general_lexicon: generalSentiment,
+         color_lexicon: colorMapSentiment[sentiment_all],
+         sentimiento_general_IA: generalSentimentIA,
+         color_IA: colorMapSentiment[sentiment_all_IA]
       }
 
       res.status(200).json(responseData);
@@ -151,6 +220,10 @@ exports.pieChart = async (req, res) => {
       let sumNegative = 0
       let sumNeutral = 0
 
+      let sumPositiveIA = 0
+      let sumNegativeIA = 0
+      let sumNeutralIA = 0
+
       for (const iteration of allIterations) {
          const idIteration = iteration.id
          const allGeneralSentiment = await GeneralSentiment.findAll({
@@ -159,27 +232,52 @@ exports.pieChart = async (req, res) => {
                falsepositive: false
             }
          })
+         const allGeneralSentimentIA = await InterfazSentiment.findAll({
+            where: {
+               iterationId: idIteration,
+               falsepositive: false
+            }
+         })
 
-         if (!allGeneralSentiment) {
+         if (!allGeneralSentiment || !allGeneralSentimentIA) {
             return res.status(404).json({ error: "Iteración No Encontrada." });
          }
          const positiveOpinions = allGeneralSentiment.filter(opinion => opinion.vote === "positive").length;
          const negativeOpinions = allGeneralSentiment.filter(opinion => opinion.vote === "negative").length;
          const neutralOpinions = allGeneralSentiment.filter(opinion => opinion.vote === "neutral").length;
+         
+         const positiveOpinionsIA = allGeneralSentimentIA.filter(opinion => opinion.vote === "Positive").length;
+         const negativeOpinionsIA = allGeneralSentimentIA.filter(opinion => opinion.vote === "Negative").length;
+         const neutralOpinionsIA = allGeneralSentimentIA.filter(opinion => opinion.vote === "Neutral").length;
 
          sumPositive += positiveOpinions
          sumNeutral += neutralOpinions
          sumNegative += negativeOpinions
+
+         sumPositiveIA += positiveOpinionsIA
+         sumNeutralIA += neutralOpinionsIA
+         sumNegativeIA += negativeOpinionsIA
       }
 
-      const series = [sumPositive, sumNeutral, sumNegative]
+      const seriesLexicon = [sumPositive, sumNeutral, sumNegative]
+      const seriesIA = [sumPositiveIA, sumNeutralIA, sumNegativeIA]
       const colors = ['#28a745', '#ffc107', '#dc3545']
       const labels = ["Positivo", "Neutro", "Negativo"]
 
-      const responseData = {
-         series: series,
+      const responseDataLexicon = {
+         series: seriesLexicon,
          labels: labels,
          colors: colors
+      }
+      const responseDataIA = {
+         series: seriesIA,
+         labels: labels,
+         colors: colors
+      }
+
+      const responseData = {
+         lexicon: responseDataLexicon,
+         IA: responseDataIA,
       }
       res.status(200).json(responseData);
    } catch (error) {
@@ -243,6 +341,8 @@ exports.barChart = async (req, res) => {
 
       const arrIteration = []
       const arrScorePromedio = []
+      const arrScorePromedioIA = []
+      const arrIterationIA = []
 
       for (const iteration of allIterations) {
          const idIteration = iteration.id
@@ -253,33 +353,46 @@ exports.barChart = async (req, res) => {
                falsepositive: false
             }
          })
-
-         const allGeneralSentiment_with_falses = await GeneralSentiment.findAll({
+         const allGeneralSentimentIA = await InterfazSentiment.findAll({
             where: {
                iterationId: idIteration,
+               falsepositive: false
             }
          })
 
-         if (!allGeneralSentiment || !allGeneralSentiment_with_falses) {
+         if (!allGeneralSentiment || !allGeneralSentimentIA) {
             return res.status(404).json({ error: "Iteración No Encontrada." });
          }
          const allSentimentQty = allGeneralSentiment.length
+         const allSentimentQtyIA = allGeneralSentimentIA.length
          let sum_score = 0
          let avg_score = 0
+         let sum_scoreIA = 0
+         let avg_scoreIA = 0
 
          for (const sentiment of allGeneralSentiment) {
-            sum_score += sentiment.score
+            sum_score += sentiment.comparative
          }
          if (allSentimentQty > 0) {
             avg_score = sum_score / allSentimentQty
             arrScorePromedio.push(avg_score.toFixed(2))
             arrIteration.push(`Iteración ${iterationNumber}`)
          }
+         for (const sentiment of allGeneralSentimentIA) {
+            sum_scoreIA += sentiment.comparative
+         }
+         if (allSentimentQtyIA > 0) {
+            avg_scoreIA = sum_scoreIA / allSentimentQtyIA
+            arrScorePromedioIA.push(avg_scoreIA.toFixed(2))
+            arrIterationIA.push(`Iteración ${iterationNumber}`)
+         }
       }
 
       const responseData = {
-         chartData: arrScorePromedio,
-         categories: arrIteration,
+         chartDataLexicon: arrScorePromedio,
+         categoriesLexicon: arrIteration,
+         chartDataIA: arrScorePromedioIA,
+         categoriesIA: arrIterationIA,
       };
 
       res.status(200).json(responseData);
