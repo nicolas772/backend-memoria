@@ -33,10 +33,10 @@ exports.create = async (req, res) => {
       });
 
     let falsePositive = false
-    if (sentiment_user === "positive" && analisis.vote === "Negative") {
+    if (sentiment_user === "positive" && analisis.vote === "negative") {
       falsePositive = true
     }
-    if (sentiment_user === "negative" && analisis.vote === "Positive") {
+    if (sentiment_user === "negative" && analisis.vote === "positive") {
       falsePositive = true
     }
 
